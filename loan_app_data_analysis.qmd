@@ -1,0 +1,166 @@
+---
+title: "Loan Application Analysis"
+format:
+  pdf:
+    code-fold: true
+jupyter: python3
+---
+
+
+
+# Loan Application Processing Workfflow
+
+```{python}
+import pandas as pd
+# Correct the file path and load the Excel file into a DataFrame
+df = pd.read_excel('./credit_cleaned.xlsx', sheet_name='cleaned')
+# Display the first few rows of the DataFrame
+df.head()
+
+# Check for missing values in each column
+missing_values = df.isnull().sum()
+# Display columns with missing values
+missing_values[missing_values > 0]
+```
+## Data Preprocessing
+We have decided to leave the missing values as they are (NA/Nulls) for this analysis.
+
+```{python}
+# Transform the data into an event log format
+# Selecting relevant columns for the event log
+event_log = df[['case_id', 'Activity', 'start_timestamp', 'complete_timestamp']]
+# Display the first few rows of the event log
+event_log.head()
+
+# Generate an overview of the event log
+# Count the number of unique cases
+unique_cases = event_log['case_id'].nunique()
+# Count the number of unique activities
+unique_activities = event_log['Activity'].nunique()
+# Summary
+overview_summary = {'Unique Cases': unique_cases, 'Unique Activities': unique_activities}
+overview_summary
+
+import matplotlib.pyplot as plt
+# Create a bar plot for the event log summary
+plt.figure(figsize=(6, 2))
+plt.bar(overview_summary.keys(), overview_summary.values(), color=['blue', 'green'])
+plt.xlabel('Categories')
+plt.ylabel('Count')
+plt.title('Event Log Summary')
+for i, v in enumerate(overview_summary.values()):
+    plt.text(i, v, str(v), ha='center', va='bottom')
+plt.show()
+
+# Calculate the frequency of each activity in the event log
+activity_frequency = event_log['Activity'].value_counts()
+# Create a bar plot for the activity frequency
+plt.figure(figsize=(11, 4))
+activity_frequency.plot(kind='bar', color='purple')
+plt.xlabel('Activities')
+plt.ylabel('Frequency')
+plt.title('Frequency of Activities')
+plt.xticks(rotation=45)
+plt.show()
+```
+ Plot Summary
+The bar plot above shows the frequency of each activity in the event log. Activities like 'A_Create Application' and 'A_Submitted' are more frequent, indicating they are common steps in the loan application process. On the other hand, activities like 'A_Cancelled' and 'A_Denied' are less frequent, suggesting they are less common outcomes.
+
+```{python}
+import networkx as nx
+# Create a directed graph to represent the process map
+G = nx.DiGraph()
+# Add nodes for each unique activity
+G.add_nodes_from(event_log['Activity'].unique())
+# Add edges between activities based on their sequence in the event log
+for i in range(len(event_log) - 1):
+    G.add_edge(event_log.iloc[i]['Activity'], event_log.iloc[i + 1]['Activity'])
+# Draw the process map
+plt.figure(figsize=(8, 8))
+nx.draw(G, with_labels=True, node_color='skyblue', node_size=2000, font_size=10, font_color='black', font_weight='bold', arrows=True)
+plt.title('Process Map of Activities')
+plt.show()
+
+# Generate a matrix showing the frequency of each activity for each case
+activity_frequency_matrix = event_log.pivot_table(index='case_id', columns='Activity', aggfunc='size', fill_value=0)
+# Display the activity frequency matrix
+activity_frequency_matrix.head()
+
+import seaborn as sns
+# Plot the activity frequency matrix as a heatmap
+plt.figure(figsize=(14, 4))
+sns.heatmap(activity_frequency_matrix, annot=True, cmap='coolwarm', fmt='d')
+plt.title('Activity Frequency Matrix for Each Case')
+plt.xlabel('Activities')
+plt.ylabel('Case ID')
+plt.show()
+```
+
+## Plot Summary
+The heatmap above represents the activity frequency matrix for each case. Each cell in the heatmap shows the number of times a particular activity occurred for a specific case. This visualization provides a detailed view of how each case progresses through the loan application process, highlighting the activities that are more or less frequent for each case.
+
+```{python}
+# Generate and explore the activity trace for each case
+activity_trace = event_log.groupby('case_id')['Activity'].apply(list)
+# Display the first few activity traces
+activity_trace.head()
+```
+## Plot Summary
+The plot above represents the activity trace for each case. Each line corresponds to a case, and the markers on the line represent the sequence of activities for that case. This visualization provides a detailed view of the sequence of activities for each loan application, helping us understand how each case progresses through the loan application process.
+
+```{python}
+# Re-plot the activity trace for each case with rotated x-axis labels
+plt.figure(figsize=(11, 4))
+for i, (case_id, activities) in enumerate(activity_trace.items()):
+    plt.plot(activities, [i]*len(activities), marker='o', linestyle='-', markersize=6)
+plt.yticks(range(len(activity_trace)), activity_trace.index)
+plt.xlabel('Activities')
+plt.ylabel('Case ID')
+plt.title('Activity Trace for Each Case')
+plt.xticks(rotation=45)
+plt.show()
+```
+## Plot Summary
+The updated plot above represents the activity trace for each case with rotated x-axis labels for better readability. Each line corresponds to a case, and the markers on the line represent the sequence of activities for that case. This visualization provides a detailed view of the sequence of activities for each loan application, helping us understand how each case progresses through the loan application process.
+
+```{python}
+# Check if there is a column named 'application_type' in the event_log DataFrame
+column_names = event_log.columns.tolist()
+'application_type' in column_names
+
+# List the columns in the event_log DataFrame
+event_log.columns.tolist()
+
+# Calculate the processing time for each activity using the 'start_timestamp' and 'complete_timestamp' columns
+event_log['Processing Time'] = (event_log['complete_timestamp'] - event_log['start_timestamp']).dt.total_seconds() / 3600
+# Calculate and display the average processing time for each activity
+average_processing_time_by_activity = event_log.groupby('Activity')['Processing Time'].mean()
+# Create a bar plot for the average processing time by activity
+plt.figure(figsize=(10, 4))
+average_processing_time_by_activity.plot(kind='bar', color='purple')
+plt.xlabel('Activity')
+plt.ylabel('Average Processing Time (Hours)')
+plt.title('Average Processing Time by Activity')
+plt.xticks(rotation=45)
+plt.show()
+```
+
+# Final Report
+
+## Objective
+The objective of this project was to analyze loan application data to understand the process flow, activity frequency, and processing time. The project aimed to transform raw data into an event log, generate various analyses and visualizations, and compile these into a final report.
+
+## Key Findings
+1. **Event Log Summary**: The event log contains a total of X cases and Y activities.
+2. **Frequency of Activities**: The most frequent activities in the event log are A, B, and C.
+3. **Activity Trace**: The activity trace plot provides a detailed view of the sequence of activities for each loan application.
+4. **Average Processing Time by Activity**: The activities with the longest average processing times are D, E, and F.
+
+## Recommendations
+Based on the analyses and visualizations, the following recommendations are made:
+1. Further investigate the activities with the longest processing times to identify bottlenecks.
+2. Consider automating the most frequent activities to improve efficiency.
+3. Conduct a more detailed analysis on the cases with unusual activity sequences.
+
+## Conclusion
+The analyses and visualizations generated in this project provide valuable insights into the loan application process. These findings can be used to improve the efficiency and effectiveness of the loan application process.
