@@ -1,0 +1,70 @@
+# 
+
+---
+title: "Loan Application Analysis"
+format:
+  html:
+    code-fold: true
+jupyter: python3
+---
+
+```{python}
+#|  echo: false
+import pandas as pd
+# Correct the file path and load the Excel file into a DataFrame
+df = pd.read_excel('./credit_cleaned.xlsx', sheet_name='cleaned')
+# Display the first few rows of the DataFrame
+df.head()
+
+# Check for missing values in each column
+missing_values = df.isnull().sum()
+# Display columns with missing values
+missing_values[missing_values > 0]
+```
+
+## Data Preprocessing
+We have decided to leave the missing values as they are (NA/Nulls) for this analysis.
+
+```{python}
+# Transform the data into an event log format
+# Selecting relevant columns for the event log
+event_log = df[['case_id', 'Activity', 'start_timestamp', 'complete_timestamp']]
+# Display the first few rows of the event log
+event_log.head()
+
+# Generate an overview of the event log
+# Count the number of unique cases
+unique_cases = event_log['case_id'].nunique()
+# Count the number of unique activities
+unique_activities = event_log['Activity'].nunique()
+# Summary
+overview_summary = {'Unique Cases': unique_cases, 'Unique Activities': unique_activities}
+overview_summary
+```
+```{python}
+import matplotlib.pyplot as plt
+# Create a bar plot for the event log summary
+plt.figure(figsize=(8, 3))
+plt.bar(overview_summary.keys(), overview_summary.values(), color=['blue', 'green'])
+plt.xlabel('Categories')
+plt.ylabel('Count')
+plt.title('Event Log Summary')
+for i, v in enumerate(overview_summary.values()):
+    plt.text(i, v, str(v), ha='center', va='bottom')
+plt.show()
+```
+
+```{python}
+#| fig-cap : "Plot Summary The bar plot above shows the frequency of each activity in the event log. Activities like 'A_Create Application' and 'A_Submitted' are more frequent, indicating they are common steps in the loan application process. On the other hand, activities like 'A_Cancelled' and 'A_Denied' are less frequent, suggesting they are less common outcomes."
+
+# Calculate the frequency of each activity in the event log
+activity_frequency = event_log['Activity'].value_counts()
+# Create a bar plot for the activity frequency
+plt.figure(figsize=(12, 4))
+activity_frequency.plot(kind='bar', color='purple')
+plt.xlabel('Activities')
+plt.ylabel('Frequency')
+plt.title('Frequency of Activities')
+plt.xticks(rotation=45)
+plt.show()
+```
